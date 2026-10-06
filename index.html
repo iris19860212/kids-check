@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <!-- 關鍵：加入 viewport-fit=cover 解決 iPad / iPhone 全螢幕與網址列、瀏海的安全區域遮蔽 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="睡前好習慣">
+  <title>🌟 姊妹睡前好習慣大挑戰</title>
+  
+  <!-- Tailwind CSS & FontAwesome Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Canvas Confetti & SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap');
+    
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+    }
+
+    body {
+      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      /* 依據 iPad 安全區域做內縮，確保不會被 Safari 浮動網址列或底部小黑條遮擋 */
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(32px, env(safe-area-inset-bottom));
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+      min-height: 100dvh;
+    }
+    
+    .font-comic {
+      font-family: 'Fredoka', 'Noto Sans TC', cursive, sans-serif;
+    }
+
+    .comic-border {
+      border: 3px solid #1e293b;
+    }
+
+    .shadow-comic {
+      box-shadow: 4px 4px 0px #1e293b;
+    }
+
+    .shadow-comicLg {
+      box-shadow: 6px 6px 0px #1e293b;
+    }
+
+    .bounce-tap {
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .bounce-tap:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0px #1e293b;
+    }
+
+    /* iPad 觸控拖曳樣式 */
+    .drag-handle {
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .sortable-ghost {
+      opacity: 0.35;
+      transform: scale(0.98);
+      background-color: #f1f5f9 !important;
+    }
+
+    .sortable-chosen {
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18) !important;
+    }
+
+    @keyframes pulse-gentle {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    .animate-gentle {
+      animation: pulse-gentle 2.2s infinite ease-in-out;
+    }
+
+    /* 防止 iOS Safari 預設橡皮筋拉動彈跳造成破版 */
+    html {
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body class="bg-amber-50/60 text-slate-800 antialiased selection:bg-amber-200">
+
+  <!-- 頂部吸頂導航：針對 iOS/iPadOS 網址列避讓 -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b-4 border-slate-900 px-3 sm:px-6 py-2.5 shadow-sm rounded-2xl mb-3">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      
+      <!-- 主標題與時鐘 -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-400 comic-border flex items-center justify-center text-xl sm:text-2xl shadow-comic">
+          ⭐
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-xl font-black text-slate-900 leading-tight">姊妹睡前好習慣大挑戰</h1>
+            <span id="sync-status-badge" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span id="sync-status-text">本機儲存已就緒</span>
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-600">
+            <span class="inline-flex items-center text-rose-600 font-black">
+              <i class="fa-regular fa-clock mr-1"></i>目標 20:30 前
+            </span>
+            <span id="countdown-status" class="hidden sm:inline"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側按鈕：音效、備份與頁面切換 -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="fullscreen-btn" onclick="toggleFullScreen()" class="p-2 sm:px-3 sm:py-1.5 rounded-xl comic-border bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-black shadow-comic bounce-tap flex items-center gap-1" title="切換全螢幕模式">
+          <i id="fullscreen-icon" class="fa-solid fa-expand"></i>
+          <span class="hidden sm:inline" id="fullscreen-btn-text">全螢幕</span>
+        </button>
+
+        <button onclick="toggleSound()" class="p-2 sm:px-3 sm:py-1.5 rounded-xl comic-border bg-amber-100 hover:bg-amber-200 text-slate-800 text-xs font-black shadow-comic bounce-tap flex items-center gap-1">
+          <i id="sound-icon" class="fa-solid fa-volume-high text-emerald-600"></i>
+          <span class="hidden sm:inline">音效</span>
+        </button>
+
+        <button onclick="openSyncModal()" class="p-2 sm:px-3 sm:py-1.5 rounded-xl comic-border bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-black shadow-comic bounce-tap flex items-center gap-1" title="在不同 iPad 間備份或同步資料">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span class="hidden sm:inline">同步備份</span>
+        </button>
+
+        <div class="flex rounded-xl p-1 bg-slate-100 comic-border shadow-comic">
+          <button id="nav-btn-checklist" onclick="switchView('checklist')" class="px-3 py-1 rounded-lg text-xs font-black bg-amber-400 text-slate-900 transition-all flex items-center gap-1">
+            <i class="fa-solid fa-list-check"></i>
+            <span>今日打卡</span>
+          </button>
+          <button id="nav-btn-records" onclick="switchView('records')" class="px-3 py-1 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-200 transition-all flex items-center gap-1">
+            <i class="fa-solid fa-trophy"></i>
+            <span>成果公佈欄</span>
+            <span id="record-count-badge" class="ml-0.5 px-1.5 py-0.2 text-[10px] bg-rose-500 text-white rounded-full">0</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 30 次挑戰進度條 -->
+    <div class="max-w-6xl mx-auto mt-2 bg-gradient-to-r from-amber-100 via-rose-100 to-purple-100 p-2 sm:p-2.5 rounded-2xl comic-border shadow-sm">
+      <div class="flex items-center justify-between text-xs font-black mb-1.5">
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm">🎁</span>
+          <span class="text-slate-900 font-comic tracking-wide">30次大挑戰換禮物：</span>
+          <span class="text-amber-800 bg-white px-2 py-0.5 rounded-lg comic-border"><span id="challenge-count-display">0</span> / 30 次</span>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] font-bold">
+          <span id="marker-5" class="text-slate-400">5次(鼓勵)</span>
+          <span class="text-slate-300">•</span>
+          <span id="marker-10" class="text-slate-400">10次(大增強)</span>
+          <span class="text-slate-300">•</span>
+          <span id="marker-20" class="text-slate-400">20次(大增強)</span>
+          <span id="gift-ready-tag" class="hidden text-rose-600 font-black animate-bounce">🎉 可以換禮物囉！</span>
+        </div>
+      </div>
+      <div class="w-full bg-white h-3 sm:h-3.5 rounded-full comic-border p-0.5 overflow-hidden">
+        <div id="challenge-progress-fill" class="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-400 to-purple-500 transition-all duration-500" style="width: 0%;"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto pb-12">
+    
+    <!-- VIEW 1: 今日打卡 (左姊姊，右妹妹並排) -->
+    <div id="view-checklist" class="space-y-4">
+      
+      <!-- 控制列 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 bg-white p-3 rounded-2xl comic-border shadow-comic">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-black text-slate-700 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
+            🖐️ 按住「<i class="fa-solid fa-grip-vertical"></i>」可拖曳排序
+          </span>
+          <button onclick="resetTodayChecklist()" class="bounce-tap bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-300">
+            <i class="fa-solid fa-rotate-left mr-1"></i>清空勾選
+          </button>
+        </div>
+
+        <button onclick="saveTodayChecklist()" class="bounce-tap bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 text-white font-black px-4 py-2 rounded-xl comic-border shadow-comic text-xs sm:text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>💾 儲存今日打卡結果 (累積+1)</span>
+        </button>
+      </div>
+
+      <!-- iPad 雙欄區域：左邊姊姊、右邊妹妹 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start">
+        
+        <!-- 左欄：姊姊專區 (條理步驟文字) -->
+        <section class="bg-rose-50/90 rounded-3xl comic-border shadow-comic p-3.5 sm:p-5 space-y-4">
+          <div class="flex items-center justify-between border-b-2 border-rose-200 pb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-11 h-11 rounded-2xl bg-rose-400 comic-border flex items-center justify-center text-2xl shadow-sm">
+                👧
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-black bg-rose-200 text-rose-900 px-2 py-0.5 rounded-md comic-border">左欄</span>
+                  <h2 class="text-base sm:text-lg font-black text-slate-900">姊姊的任務</h2>
+                </div>
+                <div class="text-xs font-bold text-rose-700">完成度：<span id="sister-progress-text">0 / 0</span></div>
+              </div>
+            </div>
+
+            <button onclick="openAddTaskModal('sister')" class="bounce-tap bg-white hover:bg-rose-100 text-rose-800 font-black px-3 py-1.5 rounded-xl comic-border shadow-comic text-xs flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i>
+              <span>加項目</span>
+            </button>
+          </div>
+
+          <div class="w-full bg-white h-3 rounded-full comic-border overflow-hidden p-0.5">
+            <div id="sister-progress-bar" class="h-full bg-rose-400 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          </div>
+
+          <!-- 姊姊任務列表容器 -->
+          <div id="sister-task-list" class="space-y-3 min-h-[160px]">
+            <!-- 由 JS 動態注入 -->
+          </div>
+        </section>
+
+        <!-- 右欄：妹妹專區 (大圖片二格漫畫視覺提示) -->
+        <section class="bg-purple-50/90 rounded-3xl comic-border shadow-comic p-3.5 sm:p-5 space-y-4">
+          <div class="flex items-center justify-between border-b-2 border-purple-200 pb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-11 h-11 rounded-2xl bg-purple-400 comic-border flex items-center justify-center text-2xl shadow-sm">
+                👧🏻
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-black bg-purple-200 text-purple-900 px-2 py-0.5 rounded-md comic-border">右欄</span>
+                  <h2 class="text-base sm:text-lg font-black text-slate-900">妹妹的任務</h2>
+                  <span class="text-[10px] font-black bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">大圖提示</span>
+                </div>
+                <div class="text-xs font-bold text-purple-700">完成度：<span id="younger-progress-text">0 / 0</span></div>
+              </div>
+            </div>
+
+            <button onclick="openAddTaskModal('younger')" class="bounce-tap bg-white hover:bg-purple-100 text-purple-800 font-black px-3 py-1.5 rounded-xl comic-border shadow-comic text-xs flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i>
+              <span>加項目</span>
+            </button>
+          </div>
+
+          <div class="w-full bg-white h-3 rounded-full comic-border overflow-hidden p-0.5">
+            <div id="younger-progress-bar" class="h-full bg-purple-400 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          </div>
+
+          <!-- 妹妹任務列表容器 -->
+          <div id="younger-task-list" class="space-y-3 min-h-[160px]">
+            <!-- 由 JS 動態注入 -->
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- VIEW 2: 歷史成果公佈欄 -->
+    <div id="view-records" class="hidden space-y-5">
+      <div class="bg-white p-4 rounded-3xl comic-border shadow-comic flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
+            <span>🏆 好習慣成果榮譽公佈欄</span>
+          </h2>
+          <p class="text-xs font-bold text-slate-500">每次儲存的歷史紀錄都會永久留存，天天累積換大禮物！</p>
+        </div>
+        <button onclick="switchView('checklist')" class="bounce-tap bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-4 py-2 rounded-xl comic-border shadow-comic text-xs">
+          <i class="fa-solid fa-arrow-left mr-1"></i>返回今日打卡
+        </button>
+      </div>
+
+      <div id="saved-records-container" class="space-y-4">
+        <!-- 由 JS 繪製歷次卡片 -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 里程碑獎勵彈窗 -->
+  <div id="milestone-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div id="milestone-modal-card" class="bg-white w-full max-w-lg rounded-3xl comic-border shadow-comicLg p-6 sm:p-8 text-center space-y-4 transform transition-all scale-95 opacity-0">
+      <div id="milestone-badge-icon" class="w-20 h-20 mx-auto rounded-3xl bg-amber-100 comic-border flex items-center justify-center text-4xl shadow-comic">
+        👏
+      </div>
+      <div>
+        <div id="milestone-pill" class="inline-block text-xs font-black px-3 py-1 rounded-full bg-amber-200 text-amber-900 mb-1 border border-amber-400">
+          里程碑達成！
+        </div>
+        <h3 id="milestone-title" class="text-xl sm:text-2xl font-black text-slate-900">
+          太棒了！掌聲鼓勵！
+        </h3>
+      </div>
+      <div id="milestone-message-box" class="bg-amber-50/80 p-4 rounded-2xl comic-border text-slate-800 text-sm sm:text-base font-bold leading-relaxed">
+        你們跨出非常棒的一步，小小的堅持每天都會開出美麗的花朵！
+      </div>
+      <div id="milestone-reward-box" class="hidden p-3.5 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-2xl border-2 border-emerald-400 text-emerald-950 font-black text-xs sm:text-sm">
+        🎟️【正式禮物兌換券】：拿著 iPad 給爸爸媽媽看，立即挑選討論你們的約定大禮物！
+      </div>
+      <div class="pt-2">
+        <button onclick="closeMilestoneModal()" class="bounce-tap bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-6 py-2.5 rounded-2xl comic-border shadow-comic text-sm">
+          ✨ 太棒了！繼續加油
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增/編輯任務彈窗 -->
+  <div id="task-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl comic-border shadow-comicLg p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2.5">
+        <h3 id="modal-title" class="text-base sm:text-lg font-black text-slate-900">新增打卡項目</h3>
+        <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-700 text-xl font-black p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="task-form" onsubmit="handleTaskSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="task-id">
+        <input type="hidden" id="task-target-role">
+        <input type="hidden" id="task-visual-icon">
+        <input type="hidden" id="task-frame1-img">
+        <input type="hidden" id="task-frame2-img">
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-black text-slate-700">任務名稱</label>
+            <span id="role-mode-badge" class="text-[10px] font-black px-2 py-0.5 rounded-md comic-border bg-purple-100 text-purple-800">
+              妹妹模式：智慧配對大圖片
+            </span>
+          </div>
+          <input type="text" id="task-title" required oninput="handleTitleInput(this.value)" class="w-full px-3 py-2.5 rounded-xl comic-border text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="輸入關鍵字如：刷牙、洗澡、整理書包、英文功課、喝溫水...">
+          <p class="text-[11px] font-bold text-slate-400 mt-1">💡 系統會根據角色自動配對文字步驟或生動大圖片！</p>
+        </div>
+
+        <!-- 妹妹專屬：智慧即時圖片預覽卡 -->
+        <div id="younger-visual-preview-box" class="bg-purple-50 p-3 rounded-2xl comic-border space-y-2">
+          <div class="flex items-center justify-between text-xs font-black text-purple-900">
+            <span>🎨 妹妹視覺大圖提示預覽</span>
+            <span class="text-[10px] font-normal text-purple-600">自動配對圖卡</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-center">
+            <div class="bg-white p-2 rounded-xl border border-purple-200">
+              <span class="text-[9px] font-bold text-slate-400">① 準備大圖</span>
+              <div id="preview-f1-img" class="text-3xl my-0.5">📸</div>
+              <div id="preview-f1-desc" class="text-[11px] font-black text-slate-700 line-clamp-1">出發準備</div>
+            </div>
+            <div class="bg-white p-2 rounded-xl border border-purple-200">
+              <span class="text-[9px] font-bold text-slate-400">② 完成大圖</span>
+              <div id="preview-f2-img" class="text-3xl my-0.5">🌟</div>
+              <div id="preview-f2-desc" class="text-[11px] font-black text-slate-700 line-clamp-1">大功告成</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">第 1 格描述 (準備動作)</label>
+            <input type="text" id="task-frame1" required class="w-full px-3 py-2 rounded-xl comic-border text-xs font-bold" placeholder="例如：擠牙膏刷刷刷">
+          </div>
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">第 2 格描述 (完成狀態)</label>
+            <input type="text" id="task-frame2" required class="w-full px-3 py-2 rounded-xl comic-border text-xs font-bold" placeholder="例如：牙齒白亮亮">
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="task-single-time" class="w-4 h-4 rounded text-amber-500 focus:ring-amber-400">
+          <label for="task-single-time" class="text-xs font-black text-slate-700">這是單次/特定日項目（如：泳具袋）</label>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl comic-border text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-700">取消</button>
+          <button type="submit" class="px-4 py-2 rounded-xl comic-border text-xs font-black bg-amber-400 hover:bg-amber-500 text-slate-900 shadow-comic">儲存項目</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 多台 iPad 備份與同步彈窗 (不用登入、不用複雜設定，以快速複製碼同步) -->
+  <div id="sync-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl comic-border shadow-comicLg p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2">
+        <h3 class="text-base sm:text-lg font-black text-slate-900">跨 iPad 備份與資料轉移</h3>
+        <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-700 text-xl font-black p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+  <!-- iPad 全螢幕 / 加入主畫面教學彈窗 -->
+  <div id="fullscreen-guide-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-sm rounded-3xl comic-border shadow-comicLg p-5 sm:p-6 space-y-4 text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 comic-border flex items-center justify-center text-3xl shadow-sm">
+        📲
+      </div>
+      <div>
+        <h3 class="text-base sm:text-lg font-black text-slate-900">iPad 滿版全螢幕秘訣</h3>
+        <p class="text-xs font-bold text-slate-500 mt-1">完全隱藏 Safari 網址列與分頁標籤</p>
+      </div>
+      <div class="bg-amber-50 p-3.5 rounded-2xl border border-amber-300 text-left text-xs font-bold text-slate-800 space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-[11px] shrink-0">1</span>
+          <span>點選 iPad Safari 上方或右上角的<strong>「分享」按鈕</strong>（<i class="fa-solid fa-arrow-up-from-bracket"></i>）</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-[11px] shrink-0">2</span>
+          <span>在列表中往下滑，點選<strong>「加入主畫面」</strong>（Add to Home Screen）</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-[11px] shrink-0">3</span>
+          <span>點擊右上方「新增」，以後從 iPad 桌面打開就是<strong> 100% 滿版原生 App</strong>！</span>
+        </div>
+      </div>
+      <button onclick="closeFullscreenGuide()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl comic-border text-xs shadow-sm">
+        我知道了，開始挑戰！
+      </button>
+    </div>
+  </div>
+
+  <!-- 拍手與鼓掌飛舞動畫容器 -->
+  <div id="clapping-fx-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+  <!-- 底部吐司提示（自動貼齊 iPad 底部安全區） -->
+  <div id="toast-message" style="bottom: max(16px, env(safe-area-inset-bottom, 16px));" class="fixed left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white font-black text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-xl comic-border border-amber-400 transition-opacity duration-300 opacity-0 pointer-events-none flex items-center gap-2">
+    <span>✨</span>
+    <span id="toast-text">已更新</span>
+  </div>
+
+  <script>
+    /* 音效引擎 Web Audio API (無外部連結依賴，避免離線或權限限制) */
+    const AudioEngine = {
+      ctx: null,
+      enabled: true,
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      },
+
+      resume() {
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+
+      playTone(freq, duration, type = 'sine', startTime = null, volume = 0.2) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        this.resume();
+        try {
+          const start = startTime || this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(volume, start);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(start);
+          osc.stop(start + duration);
+        } catch (e) {
+          console.warn("Audio tone error", e);
+        }
+      },
+
+      playApplause() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        this.resume();
+        try {
+          const now = this.ctx.currentTime;
+          const clapCount = 14;
+
+          for (let i = 0; i < clapCount; i++) {
+            const clapTime = now + (i * 0.08) + (Math.random() * 0.03);
+            const bufferSize = Math.floor(this.ctx.sampleRate * 0.045);
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let j = 0; j < bufferSize; j++) {
+              data[j] = (Math.random() * 2 - 1) * Math.exp(-j / (bufferSize * 0.28));
+            }
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 1100 + Math.random() * 400;
+            filter.Q.value = 2.5;
+
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.7, clapTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, clapTime + 0.045);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            noise.start(clapTime);
+          }
+
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            this.playTone(freq, 0.4, 'triangle', now + 0.15 + idx * 0.08, 0.12);
+          });
+        } catch (e) {
+          console.warn("Applause audio error", e);
+        }
+      },
+
+      playBigFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        this.resume();
+        const now = this.ctx.currentTime;
+        const notes = [
+          { f: 523.25, t: 0, d: 0.18 },
+          { f: 523.25, t: 0.18, d: 0.18 },
+          { f: 523.25, t: 0.36, d: 0.18 },
+          { f: 659.25, t: 0.54, d: 0.32 },
+          { f: 587.33, t: 0.88, d: 0.18 },
+          { f: 659.25, t: 1.06, d: 0.18 },
+          { f: 783.99, t: 1.24, d: 0.75 }
+        ];
+
+        notes.forEach(n => {
+          this.playTone(n.f, n.d, 'triangle', now + n.t, 0.25);
+        });
+
+        setTimeout(() => this.playApplause(), 300);
+      },
+
+      playPop() {
+        this.playTone(620, 0.08, 'sine', null, 0.18);
+      }
+    };
+  </script>
+
+  <script>
+    /* 初始預設任務資料 (符合需求：空便當盒、英文功課袋、泳具袋、20:30刷牙洗澡) */
+    const DEFAULT_SISTER_TASKS = [
+      { id: 's1', title: '刷好牙、剃好牙', frame1: '🪥 牙膏擠好刷刷刷', frame2: '✨ 牙線清潔白晶晶', completed: false, tag: '20:30 前' },
+      { id: 's2', title: '洗澡洗香香', frame1: '🚿 脫衣洗頭洗身體', frame2: '🌸 換好舒適睡衣', completed: false, tag: '20:30 前' },
+      { id: 's3', title: '收好隔日物品放門口', frame1: '🎒 整理聯絡簿鉛筆盒', frame2: '🚪 整齊立正放玄關', completed: false },
+      { id: 's4', title: '完成全部學校功課', frame1: '📖 作業寫完仔細檢查', frame2: '📂 聯絡簿請家長簽名', completed: false },
+      { id: 's5', title: '英文功課袋', frame1: '🔤 ABC 英文作業讀本', frame2: '📁 裝入專用袋確認', completed: false },
+      { id: 's6', title: '泳具袋 (特定日)', frame1: '🏊 泳衣泳帽蛙鏡毛巾', frame2: '👜 裝入泳具袋立正', completed: false, isSingle: true },
+      { id: 's7', title: '乾淨的空便當盒', frame1: '🥣 便當吃光打開洗淨', frame2: '✨ 潔淨空盒瀝乾放好', completed: false }
+    ];
+
+    /* 妹妹的專屬大圖片二格漫畫任務清單 */
+    const DEFAULT_YOUNGER_TASKS = [
+      { 
+        id: 'y1', 
+        title: '刷牙與剃牙', 
+        visualIcon: '🪥',
+        frame1Img: '🪥🫧',
+        frame1: '嘴巴張開阿—刷泡泡', 
+        frame2Img: '🦷✨',
+        frame2: '牙齒白亮亮沒蛀牙！', 
+        completed: false, 
+        tag: '20:30 前'
+      },
+      { 
+        id: 'y2', 
+        title: '洗澡洗香香', 
+        visualIcon: '🚿',
+        frame1Img: '🛁🧼',
+        frame1: '開心沖水洗身體', 
+        frame2Img: '🌸👗',
+        frame2: '吹乾頭髮換美美睡衣', 
+        completed: false, 
+        tag: '20:30 前'
+      },
+      { 
+        id: 'y3', 
+        title: '收隔日書包放門口', 
+        visualIcon: '🎒',
+        frame1Img: '🎒🧸',
+        frame1: '手帕水壺繪本放書包', 
+        frame2Img: '🚪🚶‍♀️',
+        frame2: '立正放好在大門口', 
+        completed: false
+      },
+      { 
+        id: 'y4', 
+        title: '乾淨的空便當盒', 
+        visualIcon: '🥣',
+        frame1Img: '🥣🍴',
+        frame1: '空便當盒打開洗乾淨', 
+        frame2Img: '✨🧺',
+        frame2: '瀝乾亮晶晶放書包旁', 
+        completed: false
+      },
+      { 
+        id: 'y5', 
+        title: '收拾心愛玩具', 
+        visualIcon: '🧸',
+        frame1Img: '🧸🧩',
+        frame1: '地上的玩具排隊集合', 
+        frame2Img: '📦🌈',
+        frame2: '放回玩具箱收整齊', 
+        completed: false
+      }
+    ];
+
+    window.sisterTasks = JSON.parse(JSON.stringify(DEFAULT_SISTER_TASKS));
+    window.youngerTasks = JSON.parse(JSON.stringify(DEFAULT_YOUNGER_TASKS));
+    window.savedRecords = [];
+    window.currentView = 'checklist';
+
+    /* 智慧關鍵字圖片與二格步驟偵測辨識 */
+    function detectVisuals(query) {
+      const q = (query || '').toLowerCase();
+      if (/牙|刷牙|剔牙|牙線/.test(q)) {
+        return {
+          icon: '🪥',
+          f1Img: '🪥🫧',
+          f1: '擠牙膏嘴巴張開刷',
+          f2Img: '🦷✨',
+          f2: '牙齒白亮亮沒蛀牙！'
+        };
+      }
+      if (/澡|洗澡|洗頭|泡澡|香香/.test(q)) {
+        return {
+          icon: '🚿',
+          f1Img: '🛁🧼',
+          f1: '開心沖水洗身體',
+          f2Img: '🌸👗',
+          f2: '吹乾頭髮換美美睡衣'
+        };
+      }
+      if (/書包|隔日|門口|聯絡簿|書本/.test(q)) {
+        return {
+          icon: '🎒',
+          f1Img: '🎒🧸',
+          f1: '手帕水壺繪本收好',
+          f2Img: '🚪🚶‍♀️',
+          f2: '立正放好在大門口'
+        };
+      }
+      if (/便當|餐盒|吃完|空盒/.test(q)) {
+        return {
+          icon: '🥣',
+          f1Img: '🥣🍴',
+          f1: '空便當盒打開洗淨',
+          f2Img: '✨🧺',
+          f2: '瀝乾亮晶晶放好'
+        };
+      }
+      if (/玩具|娃娃|收拾|收玩具|積木/.test(q)) {
+        return {
+          icon: '🧸',
+          f1Img: '🧸🧩',
+          f1: '地上的玩具排隊集合',
+          f2Img: '📦🌈',
+          f2: '放回玩具箱收整齊'
+        };
+      }
+      if (/功課|作業|學校|寫字|畫畫/.test(q)) {
+        return {
+          icon: '📖',
+          f1Img: '✏️📖',
+          f1: '坐在書桌專心完成',
+          f2Img: '📂💯',
+          f2: '仔細檢查放進書包'
+        };
+      }
+      if (/英文|abc|english/.test(q)) {
+        return {
+          icon: '🔤',
+          f1Img: '🔤📝',
+          f1: 'ABC 英文作業讀本',
+          f2Img: '📁✨',
+          f2: '裝入英文袋放好'
+        };
+      }
+      if (/泳|游泳|泳具|水母衣|泳衣/.test(q)) {
+        return {
+          icon: '🏊',
+          f1Img: '🏊🥽',
+          f1: '泳衣泳帽蛙鏡準備',
+          f2Img: '👜💧',
+          f2: '裝入泳具袋立正'
+        };
+      }
+      if (/水|喝水|水壺|溫水/.test(q)) {
+        return {
+          icon: '🥛',
+          f1Img: '🍼💧',
+          f1: '倒一杯健康溫開水',
+          f2Img: '🥛😋',
+          f2: '咕嚕咕嚕喝完好舒服'
+        };
+      }
+      if (/睡|睡覺|上床|晚安|床/.test(q)) {
+        return {
+          icon: '🌙',
+          f1Img: '🛏🧸',
+          f1: '抱抱小熊蓋好被子',
+          f2Img: '💤😴',
+          f2: '閉上眼睛甜甜入睡'
+        };
+      }
+      return {
+        icon: '⭐',
+        f1Img: '🎯✨',
+        f1: '準備開始任務',
+        f2Img: '🌟🏅',
+        f2: '開開心心完成！'
+      };
+    }
+  </script>
+
+  <script>
+    /* 姊姊的卡片版型 (條理文字步驟 + 觸控握把) */
+    function createSisterCardHtml(task) {
+      const isDone = !!task.completed;
+      const cardBg = isDone ? 'border-emerald-500 bg-emerald-50/95 ring-2 ring-emerald-300' : 'border-slate-800 bg-white';
+      const btnTheme = isDone ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-rose-400 hover:bg-rose-500 text-white';
+
+      return `
+        <div data-id="${task.id}" class="comic-border rounded-2xl p-3 sm:p-3.5 transition-all shadow-comic ${cardBg}">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <div class="drag-handle text-slate-300 hover:text-slate-600 px-1 py-1 text-sm cursor-grab" title="按住拖曳排序">
+                <i class="fa-solid fa-grip-vertical"></i>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="font-black text-sm sm:text-base text-slate-900">${task.title}</span>
+                ${task.tag ? `<span class="text-[10px] font-black bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md border border-rose-300">${task.tag}</span>` : ''}
+                ${task.isSingle ? `<span class="text-[10px] font-black bg-sky-100 text-sky-800 px-2 py-0.5 rounded-md border border-sky-300">單次特定</span>` : ''}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button onclick="editTask('${task.id}', 'sister')" class="text-slate-400 hover:text-slate-700 p-1 text-xs">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button onclick="deleteTask('${task.id}', 'sister')" class="text-slate-400 hover:text-rose-600 p-1 text-xs">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 姊姊兩格條理文字 -->
+          <div class="grid grid-cols-2 gap-2 mb-2.5">
+            <div class="bg-amber-50/80 p-2 rounded-xl border border-dashed border-amber-300 text-center">
+              <div class="text-[10px] font-bold text-slate-400 mb-0.5">① 準備</div>
+              <div class="text-xs font-black text-slate-800">${task.frame1}</div>
+            </div>
+            <div class="bg-emerald-50/80 p-2 rounded-xl border border-dashed border-emerald-300 text-center">
+              <div class="text-[10px] font-bold text-slate-400 mb-0.5">② 完成</div>
+              <div class="text-xs font-black text-slate-800">${task.frame2}</div>
+            </div>
+          </div>
+
+          <button onclick="toggleTask('${task.id}', 'sister')" class="w-full py-2.5 px-3 rounded-xl comic-border font-black text-xs sm:text-sm flex items-center justify-center gap-2 bounce-tap shadow-sm transition-colors ${btnTheme}">
+            <i class="fa-solid ${isDone ? 'fa-circle-check text-base' : 'fa-circle'}"></i>
+            <span>${isDone ? '🎉 已完成！太棒了' : '點我完成確認'}</span>
+          </button>
+        </div>
+      `;
+    }
+
+    /* 妹妹的大圖片視覺提示漫畫卡片 */
+    function createYoungerCardHtml(task) {
+      const isDone = !!task.completed;
+      const cardBg = isDone ? 'border-emerald-500 bg-emerald-50/95 ring-2 ring-emerald-400' : 'border-slate-800 bg-white';
+      const btnTheme = isDone ? 'bg-emerald-500 text-white border-emerald-600 shadow-comic' : 'bg-purple-400 hover:bg-purple-500 text-white shadow-comic';
+      const f1Img = task.frame1Img || '📸';
+      const f2Img = task.frame2Img || '🌟';
+
+      return `
+        <div data-id="${task.id}" class="comic-border rounded-3xl p-3 sm:p-4 transition-all shadow-comic ${cardBg}">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <div class="drag-handle text-slate-300 hover:text-purple-600 px-1 py-1 text-base cursor-grab" title="按住拖曳排序">
+                <i class="fa-solid fa-grip-vertical"></i>
+              </div>
+              <div class="w-9 h-9 rounded-2xl bg-purple-200 comic-border flex items-center justify-center text-xl shadow-sm">
+                ${task.visualIcon || '🎨'}
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-black text-sm sm:text-base text-slate-900">${task.title}</span>
+                  ${task.tag ? `<span class="text-[10px] font-black bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-full border border-rose-300">${task.tag}</span>` : ''}
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">看圖片兩步驟！</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button onclick="editTask('${task.id}', 'younger')" class="text-slate-400 hover:text-slate-700 p-1 text-xs">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button onclick="deleteTask('${task.id}', 'younger')" class="text-slate-400 hover:text-rose-600 p-1 text-xs">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 妹妹的大圖片二格展示區 -->
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="bg-amber-100/70 p-2 sm:p-2.5 rounded-2xl border-2 border-amber-300 text-center flex flex-col items-center justify-center relative">
+              <span class="absolute top-1 left-2 text-[8px] sm:text-[9px] font-black text-amber-800 bg-white/90 px-1.5 py-0.2 rounded-md">① 準備</span>
+              <div class="text-3xl sm:text-4xl my-1 select-none animate-gentle">${f1Img}</div>
+              <div class="text-[11px] sm:text-xs font-black text-slate-800 line-clamp-1">${task.frame1}</div>
+            </div>
+
+            <div class="bg-emerald-100/70 p-2 sm:p-2.5 rounded-2xl border-2 border-emerald-300 text-center flex flex-col items-center justify-center relative">
+              <span class="absolute top-1 left-2 text-[8px] sm:text-[9px] font-black text-emerald-800 bg-white/90 px-1.5 py-0.2 rounded-md">② 完成</span>
+              <div class="text-3xl sm:text-4xl my-1 select-none">${f2Img}</div>
+              <div class="text-[11px] sm:text-xs font-black text-slate-800 line-clamp-1">${task.frame2}</div>
+            </div>
+          </div>
+
+          <button onclick="toggleTask('${task.id}', 'younger')" class="w-full py-2.5 sm:py-3 px-3 rounded-2xl comic-border font-black text-xs sm:text-sm flex items-center justify-center gap-2 bounce-tap transition-transform ${btnTheme}">
+            <i class="fa-solid ${isDone ? 'fa-circle-check text-lg animate-bounce' : 'fa-circle-check text-base opacity-70'}"></i>
+            <span>${isDone ? '🎉 妹妹完成囉！好棒' : '點我完成確認 👍'}</span>
+          </button>
+        </div>
+      `;
+    }
+  </script>
+
+  <script>
+    let sisterSortableInstance = null;
+    let youngerSortableInstance = null;
+
+    function initSortables() {
+      const sContainer = document.getElementById('sister-task-list');
+      const yContainer = document.getElementById('younger-task-list');
+      if (!sContainer || !yContainer || typeof Sortable === 'undefined') return;
+
+      if (sisterSortableInstance) sisterSortableInstance.destroy();
+      if (youngerSortableInstance) youngerSortableInstance.destroy();
+
+      sisterSortableInstance = new Sortable(sContainer, {
+        handle: '.drag-handle',
+        animation: 160,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        delay: 50,
+        delayOnTouchOnly: true,
+        onEnd: function(evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          const moved = window.sisterTasks.splice(evt.oldIndex, 1)[0];
+          window.sisterTasks.splice(evt.newIndex, 0, moved);
+          saveToStorage();
+          showToast("姊姊任務順序已儲存！");
+        }
+      });
+
+      youngerSortableInstance = new Sortable(yContainer, {
+        handle: '.drag-handle',
+        animation: 160,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        delay: 50,
+        delayOnTouchOnly: true,
+        onEnd: function(evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          const moved = window.youngerTasks.splice(evt.oldIndex, 1)[0];
+          window.youngerTasks.splice(evt.newIndex, 0, moved);
+          saveToStorage();
+          showToast("妹妹任務順序已儲存！");
+        }
+      });
+    }
+
+    window.renderTasks = function() {
+      const sisterContainer = document.getElementById('sister-task-list');
+      const youngerContainer = document.getElementById('younger-task-list');
+      if (!sisterContainer || !youngerContainer) return;
+
+      sisterContainer.innerHTML = window.sisterTasks.map(t => createSisterCardHtml(t)).join('');
+      youngerContainer.innerHTML = window.youngerTasks.map(t => createYoungerCardHtml(t)).join('');
+
+      updateProgress();
+      initSortables();
+    };
+
+    function updateProgress() {
+      const sTotal = window.sisterTasks.length;
+      const sDone = window.sisterTasks.filter(t => t.completed).length;
+      const sText = document.getElementById('sister-progress-text');
+      const sBar = document.getElementById('sister-progress-bar');
+      if (sText) sText.textContent = `${sDone} / ${sTotal}`;
+      if (sBar) sBar.style.width = `${sTotal ? (sDone / sTotal) * 100 : 0}%`;
+
+      const yTotal = window.youngerTasks.length;
+      const yDone = window.youngerTasks.filter(t => t.completed).length;
+      const yText = document.getElementById('younger-progress-text');
+      const yBar = document.getElementById('younger-progress-bar');
+      if (yText) yText.textContent = `${yDone} / ${yTotal}`;
+      if (yBar) yBar.style.width = `${yTotal ? (yDone / yTotal) * 100 : 0}%`;
+    }
+
+    window.toggleTask = function(id, role) {
+      AudioEngine.init();
+      const list = role === 'sister' ? window.sisterTasks : window.youngerTasks;
+      const task = list.find(t => t.id === id);
+      if (!task) return;
+
+      task.completed = !task.completed;
+      if (task.completed) {
+        AudioEngine.playPop();
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 30,
+            spread: 60,
+            origin: { y: 0.8 }
+          });
+        }
+      }
+
+      window.renderTasks();
+      saveToStorage();
+    };
+  </script>
+
+  <script>
+    window.saveTodayChecklist = function() {
+      AudioEngine.init();
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const isBefore830 = (now.getHours() < 20) || (now.getHours() === 20 && now.getMinutes() <= 30);
+
+      const recordItem = {
+        id: 'rec_' + Date.now(),
+        dateStr: timeStr,
+        isBefore830,
+        sisterTasks: JSON.parse(JSON.stringify(window.sisterTasks)),
+        youngerTasks: JSON.parse(JSON.stringify(window.youngerTasks))
+      };
+
+      window.savedRecords.unshift(recordItem);
+      const currentCount = window.savedRecords.length;
+
+      window.updateChallengeProgress();
+      AudioEngine.playApplause();
+      spawnClappingEffects();
+
+      saveToStorage();
+
+      if (currentCount === 5 || currentCount === 10 || currentCount === 20 || currentCount >= 30) {
+        setTimeout(() => {
+          triggerMilestoneCelebration(currentCount);
+        }, 450);
+      } else {
+        showToast(`👏 太棒了！已累積完成 ${currentCount} 次！持續朝 30 次大禮物邁進！`);
+      }
+
+      setTimeout(() => switchView('records'), 750);
+    };
+
+    window.updateChallengeProgress = function() {
+      const count = window.savedRecords.length;
+      const countDisplay = document.getElementById('challenge-count-display');
+      const badge = document.getElementById('record-count-badge');
+      const fill = document.getElementById('challenge-progress-fill');
+      
+      if (countDisplay) countDisplay.textContent = count;
+      if (badge) badge.textContent = count;
+      if (fill) fill.style.width = `${Math.min(100, Math.round((count / 30) * 100))}%`;
+
+      const giftReadyTag = document.getElementById('gift-ready-tag');
+      if (giftReadyTag) {
+        giftReadyTag.classList.toggle('hidden', count < 30);
+      }
+
+      const m5 = document.getElementById('marker-5');
+      const m10 = document.getElementById('marker-10');
+      const m20 = document.getElementById('marker-20');
+      if (m5) m5.className = count >= 5 ? 'text-rose-600 font-black' : 'text-slate-400';
+      if (m10) m10.className = count >= 10 ? 'text-amber-600 font-black' : 'text-slate-400';
+      if (m20) m20.className = count >= 20 ? 'text-purple-600 font-black' : 'text-slate-400';
+    };
+
+    function spawnClappingEffects() {
+      const container = document.getElementById('clapping-fx-container');
+      if (!container) return;
+      const emojis = ['👏', '👏🏻', '👏🏼', '✨', '💖', '🌟', '🎉'];
+      for (let i = 0; i < 16; i++) {
+        const el = document.createElement('div');
+        el.className = 'absolute text-3xl select-none';
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        el.style.left = `${Math.random() * 85 + 5}%`;
+        el.style.top = `${Math.random() * 40 + 40}%`;
+        el.style.transition = 'all 1.6s ease-out';
+        el.style.opacity = '1';
+        container.appendChild(el);
+
+        setTimeout(() => {
+          el.style.transform = `translateY(-120px) scale(1.3) rotate(${(Math.random() - 0.5) * 40}deg)`;
+          el.style.opacity = '0';
+        }, 40);
+
+        setTimeout(() => el.remove(), 1800);
+      }
+    }
+
+    window.triggerMilestoneCelebration = function(count) {
+      const modal = document.getElementById('milestone-modal');
+      const card = document.getElementById('milestone-modal-card');
+      const badgeIcon = document.getElementById('milestone-badge-icon');
+      const pill = document.getElementById('milestone-pill');
+      const title = document.getElementById('milestone-title');
+      const msgBox = document.getElementById('milestone-message-box');
+      const rewardBox = document.getElementById('milestone-reward-box');
+
+      if (!modal || !card) return;
+      rewardBox.classList.add('hidden');
+
+      if (count >= 30) {
+        badgeIcon.textContent = '🎁';
+        pill.textContent = '🎉 30次大挑戰圓滿達成！';
+        title.textContent = '恭喜姊妹倆！可以換大禮物囉！';
+        msgBox.innerHTML = '太了不起了！連續完成 30 次睡前常規任務！<br>自律與責任感已經成為妳們最閃亮的超能力，爸爸媽媽由衷為妳們鼓掌歡呼！';
+        rewardBox.classList.remove('hidden');
+        AudioEngine.playBigFanfare();
+      } else if (count === 20) {
+        badgeIcon.textContent = '👑';
+        pill.textContent = '🥈 20次大增強里程碑！';
+        title.textContent = '超強自律小女王！大增強達成！';
+        msgBox.innerHTML = '已經累積到 20 次了！妳們的合作與堅持讓人驚嘆！<br>距離 30 次的大禮物只剩最後 10 步！今晚獲得專屬加碼讚賞！';
+        AudioEngine.playBigFanfare();
+      } else if (count === 10) {
+        badgeIcon.textContent = '🎖️';
+        pill.textContent = '🥉 10次大增強里程碑！';
+        title.textContent = '雙倍勇氣小達人！十次大增強！';
+        msgBox.innerHTML = '突破雙位數大關！完成 10 次代表好習慣已經深深生根囉！<br>兩姊妹都做得非常漂亮，給自己一個大大的擁抱！';
+        AudioEngine.playBigFanfare();
+      } else if (count === 5) {
+        badgeIcon.textContent = '💬';
+        pill.textContent = '🌟 5次暖心鼓勵金句';
+        title.textContent = '持之以恆的種子正在發芽！';
+        msgBox.innerHTML = '每一天準時刷好牙、收好包包的妳們，都是最棒的小英雄！繼續保持微笑前進！';
+        AudioEngine.playApplause();
+      }
+
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+      }, 20);
+    };
+
+    window.closeMilestoneModal = function() {
+      const modal = document.getElementById('milestone-modal');
+      const card = document.getElementById('milestone-modal-card');
+      if (!modal || !card) return;
+      card.classList.remove('scale-100', 'opacity-100');
+      card.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 220);
+    };
+  </script>
+
+  <script>
+    window.switchView = function(target) {
+      window.currentView = target;
+      const checkView = document.getElementById('view-checklist');
+      const recView = document.getElementById('view-records');
+      const btnCheck = document.getElementById('nav-btn-checklist');
+      const btnRec = document.getElementById('nav-btn-records');
+
+      if (target === 'checklist') {
+        if (checkView) checkView.classList.remove('hidden');
+        if (recView) recView.classList.add('hidden');
+        if (btnCheck) btnCheck.className = 'px-3 py-1 rounded-lg text-xs font-black bg-amber-400 text-slate-900 transition-all flex items-center gap-1';
+        if (btnRec) btnRec.className = 'px-3 py-1 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-200 transition-all flex items-center gap-1';
+      } else {
+        if (checkView) checkView.classList.add('hidden');
+        if (recView) recView.classList.remove('hidden');
+        if (btnCheck) btnCheck.className = 'px-3 py-1 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-200 transition-all flex items-center gap-1';
+        if (btnRec) btnRec.className = 'px-3 py-1 rounded-lg text-xs font-black bg-amber-400 text-slate-900 transition-all flex items-center gap-1';
+        window.renderRecords();
+      }
+    };
+
+    window.renderRecords = function() {
+      const container = document.getElementById('saved-records-container');
+      if (!container) return;
+
+      if (window.savedRecords.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-8 rounded-3xl comic-border text-center text-slate-400 font-bold">
+            <i class="fa-solid fa-clipboard-list text-4xl mb-2 text-slate-300"></i>
+            <p>目前還沒有儲存的紀錄，快去今日打卡勾選並儲存吧！</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = window.savedRecords.map((rec, idx) => `
+        <div class="bg-white p-4 sm:p-5 rounded-3xl comic-border shadow-comic space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b-2 border-slate-200 pb-2.5">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-black bg-amber-300 text-slate-900 px-2.5 py-0.5 rounded-lg comic-border">第 ${window.savedRecords.length - idx} 次打卡</span>
+                <span class="text-xs text-slate-500 font-bold">${rec.dateStr}</span>
+              </div>
+              <div class="mt-1">
+                ${rec.isBefore830 ? '<span class="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">⏰ 20:30 前準時達標！</span>' : '<span class="text-xs font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">⭐ 努力完成！</span>'}
+              </div>
+            </div>
+            <button onclick="deleteRecord('${rec.id}')" class="text-slate-400 hover:text-rose-600 text-xs font-bold px-2 py-1 rounded">
+              <i class="fa-solid fa-trash-can mr-1"></i>刪除
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-rose-50/70 p-3 rounded-2xl border border-rose-200">
+              <h4 class="text-xs font-black text-rose-800 mb-1.5">👧 姊姊項目</h4>
+              <ul class="text-xs font-bold space-y-1">
+                ${(rec.sisterTasks || []).map(t => `
+                  <li class="flex items-center gap-1.5 ${t.completed ? 'text-emerald-700 font-black' : 'text-slate-400'}">
+                    <i class="fa-solid ${t.completed ? 'fa-check text-emerald-600' : 'fa-xmark text-slate-300'}"></i>
+                    <span>${t.title}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+
+            <div class="bg-purple-50/70 p-3 rounded-2xl border border-purple-200">
+              <h4 class="text-xs font-black text-purple-800 mb-1.5">👧🏻 妹妹項目</h4>
+              <ul class="text-xs font-bold space-y-1">
+                ${(rec.youngerTasks || []).map(t => `
+                  <li class="flex items-center gap-1.5 ${t.completed ? 'text-emerald-700 font-black' : 'text-slate-400'}">
+                    <i class="fa-solid ${t.completed ? 'fa-check text-emerald-600' : 'fa-xmark text-slate-300'}"></i>
+                    <span>${t.title}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    window.deleteRecord = function(recId) {
+      window.savedRecords = window.savedRecords.filter(r => r.id !== recId);
+      window.updateChallengeProgress();
+      window.renderRecords();
+      saveToStorage();
+      showToast("已刪除該筆成果紀錄");
+    };
+
+    window.resetTodayChecklist = function() {
+      window.sisterTasks.forEach(t => t.completed = false);
+      window.youngerTasks.forEach(t => t.completed = false);
+      window.renderTasks();
+      saveToStorage();
+      showToast("已重設今日勾選項目");
+    };
+
+    window.handleTitleInput = function(val) {
+      const role = document.getElementById('task-target-role').value;
+      const detected = detectVisuals(val);
+
+      document.getElementById('task-visual-icon').value = detected.icon;
+      document.getElementById('task-frame1-img').value = detected.f1Img;
+      document.getElementById('task-frame2-img').value = detected.f2Img;
+
+      if (role === 'younger') {
+        const p1Img = document.getElementById('preview-f1-img');
+        const p2Img = document.getElementById('preview-f2-img');
+        const p1Desc = document.getElementById('preview-f1-desc');
+        const p2Desc = document.getElementById('preview-f2-desc');
+        if (p1Img) p1Img.textContent = detected.f1Img;
+        if (p2Img) p2Img.textContent = detected.f2Img;
+        if (p1Desc) p1Desc.textContent = document.getElementById('task-frame1').value || detected.f1;
+        if (p2Desc) p2Desc.textContent = document.getElementById('task-frame2').value || detected.f2;
+      }
+
+      const f1Input = document.getElementById('task-frame1');
+      const f2Input = document.getElementById('task-frame2');
+      if (f1Input && !f1Input.dataset.userEdited) f1Input.value = detected.f1;
+      if (f2Input && !f2Input.dataset.userEdited) f2Input.value = detected.f2;
+    };
+
+    window.openAddTaskModal = function(role) {
+      document.getElementById('task-id').value = '';
+      document.getElementById('task-target-role').value = role;
+      document.getElementById('modal-title').textContent = `新增打卡項目 (${role === 'sister' ? '姊姊' : '妹妹'})`;
+      document.getElementById('task-title').value = '';
+      
+      const f1 = document.getElementById('task-frame1');
+      const f2 = document.getElementById('task-frame2');
+      f1.value = '';
+      f2.value = '';
+      delete f1.dataset.userEdited;
+      delete f2.dataset.userEdited;
+      
+      f1.oninput = () => { f1.dataset.userEdited = true; };
+      f2.oninput = () => { f2.dataset.userEdited = true; };
+
+      document.getElementById('task-single-time').checked = false;
+
+      const badge = document.getElementById('role-mode-badge');
+      const previewBox = document.getElementById('younger-visual-preview-box');
+
+      if (role === 'younger') {
+        badge.textContent = '👧🏻 妹妹模式：大圖片視覺提示';
+        badge.className = 'text-[10px] font-black px-2 py-0.5 rounded-md comic-border bg-purple-100 text-purple-800';
+        previewBox.classList.remove('hidden');
+        document.getElementById('preview-f1-img').textContent = '📸';
+        document.getElementById('preview-f2-img').textContent = '🌟';
+        document.getElementById('preview-f1-desc').textContent = '出發準備';
+        document.getElementById('preview-f2-desc').textContent = '順利完成';
+      } else {
+        badge.textContent = '👧 姊姊模式：文字二步驟條列';
+        badge.className = 'text-[10px] font-black px-2 py-0.5 rounded-md comic-border bg-rose-100 text-rose-800';
+        previewBox.classList.add('hidden');
+      }
+
+      document.getElementById('task-modal').classList.remove('hidden');
+    };
+
+    window.editTask = function(id, role) {
+      const list = role === 'sister' ? window.sisterTasks : window.youngerTasks;
+      const task = list.find(t => t.id === id);
+      if (!task) return;
+
+      document.getElementById('task-id').value = task.id;
+      document.getElementById('task-target-role').value = role;
+      document.getElementById('modal-title').textContent = `編輯項目 (${role === 'sister' ? '姊姊' : '妹妹'})`;
+      document.getElementById('task-title').value = task.title;
+      document.getElementById('task-frame1').value = task.frame1;
+      document.getElementById('task-frame2').value = task.frame2;
+      document.getElementById('task-single-time').checked = !!task.isSingle;
+
+      document.getElementById('task-visual-icon').value = task.visualIcon || '⭐';
+      document.getElementById('task-frame1-img').value = task.frame1Img || '📸';
+      document.getElementById('task-frame2-img').value = task.frame2Img || '🌟';
+
+      const badge = document.getElementById('role-mode-badge');
+      const previewBox = document.getElementById('younger-visual-preview-box');
+
+      if (role === 'younger') {
+        badge.textContent = '👧🏻 妹妹模式：大圖片視覺提示';
+        previewBox.classList.remove('hidden');
+        document.getElementById('preview-f1-img').textContent = task.frame1Img || '📸';
+        document.getElementById('preview-f2-img').textContent = task.frame2Img || '🌟';
+        document.getElementById('preview-f1-desc').textContent = task.frame1;
+        document.getElementById('preview-f2-desc').textContent = task.frame2;
+      } else {
+        badge.textContent = '👧 姊姊模式：文字二步驟條列';
+        previewBox.classList.add('hidden');
+      }
+
+      document.getElementById('task-modal').classList.remove('hidden');
+    };
+
+    window.closeTaskModal = function() {
+      document.getElementById('task-modal').classList.add('hidden');
+    };
+
+    window.handleTaskSubmit = function(e) {
+      e.preventDefault();
+      const id = document.getElementById('task-id').value;
+      const role = document.getElementById('task-target-role').value;
+      const title = document.getElementById('task-title').value.trim();
+      const frame1 = document.getElementById('task-frame1').value.trim();
+      const frame2 = document.getElementById('task-frame2').value.trim();
+      const isSingle = document.getElementById('task-single-time').checked;
+
+      const detected = detectVisuals(title);
+      const visualIcon = document.getElementById('task-visual-icon').value || detected.icon;
+      const frame1Img = document.getElementById('task-frame1-img').value || detected.f1Img;
+      const frame2Img = document.getElementById('task-frame2-img').value || detected.f2Img;
+
+      const list = role === 'sister' ? window.sisterTasks : window.youngerTasks;
+
+      if (id) {
+        const item = list.find(t => t.id === id);
+        if (item) {
+          item.title = title;
+          item.frame1 = frame1;
+          item.frame2 = frame2;
+          item.isSingle = isSingle;
+          if (role === 'younger') {
+            item.visualIcon = visualIcon;
+            item.frame1Img = frame1Img;
+            item.frame2Img = frame2Img;
+          }
+        }
+      } else {
+        list.push({
+          id: 'task_' + Date.now(),
+          title,
+          frame1,
+          frame2,
+          isSingle,
+          completed: false,
+          visualIcon: visualIcon,
+          frame1Img: frame1Img,
+          frame2Img: frame2Img
+        });
+      }
+
+      closeTaskModal();
+      window.renderTasks();
+      saveToStorage();
+      showToast("打卡項目已儲存");
+    };
+
+    window.deleteTask = function(id, role) {
+      if (role === 'sister') {
+        window.sisterTasks = window.sisterTasks.filter(t => t.id !== id);
+      } else {
+        window.youngerTasks = window.youngerTasks.filter(t => t.id !== id);
+      }
+      window.renderTasks();
+      saveToStorage();
+      showToast("已刪除該項目");
+    };
+  </script>
+
+  <script>
+    const STORAGE_KEY = 'kids_routine_v2_data';
+
+    /* 本地持久儲存：解決換裝置或重新整理資料遺失問題 */
+    function saveToStorage() {
+      try {
+        const payload = {
+          sisterTasks: window.sisterTasks,
+          youngerTasks: window.youngerTasks,
+          savedRecords: window.savedRecords,
+          updatedAt: Date.now()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        setSyncBadge('synced', '已保存至 iPad 本機');
+      } catch (err) {
+        console.warn("Storage save error", err);
+        setSyncBadge('offline', '儲存提醒：容量已滿');
+      }
+    }
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (Array.isArray(data.sisterTasks) && data.sisterTasks.length > 0) {
+            window.sisterTasks = data.sisterTasks;
+          }
+          if (Array.isArray(data.youngerTasks) && data.youngerTasks.length > 0) {
+            window.youngerTasks = data.youngerTasks;
+          }
+          if (Array.isArray(data.savedRecords)) {
+            window.savedRecords = data.savedRecords;
+          }
+          setSyncBadge('synced', '已載入歷史進度');
+          return true;
+        }
+      } catch (err) {
+        console.warn("Storage load error", err);
+      }
+      return false;
+    }
+
+    function setSyncBadge(status, text) {
+      const badge = document.getElementById('sync-status-badge');
+      const textEl = document.getElementById('sync-status-text');
+      if (!badge || !textEl) return;
+      textEl.textContent = text;
+      if (status === 'synced') {
+        badge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1';
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span id="sync-status-text">' + text + '</span>';
+      } else {
+        badge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-300 flex items-center gap-1';
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span><span id="sync-status-text">' + text + '</span>';
+      }
+    }
+
+    /* 跨 iPad 備份碼功能 */
+    window.openSyncModal = function() {
+      const modal = document.getElementById('sync-modal');
+      const exportText = document.getElementById('sync-export-text');
+      if (!modal || !exportText) return;
+
+      const payload = {
+        sisterTasks: window.sisterTasks,
+        youngerTasks: window.youngerTasks,
+        savedRecords: window.savedRecords,
+        exportedAt: new Date().toISOString()
+      };
+
+      try {
+        exportText.value = btoa(encodeURIComponent(JSON.stringify(payload)));
+      } catch (e) {
+        exportText.value = JSON.stringify(payload);
+      }
+
+      modal.classList.remove('hidden');
+    };
+
+    window.closeSyncModal = function() {
+      const modal = document.getElementById('sync-modal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    window.copySyncCode = function() {
+      const textarea = document.getElementById('sync-export-text');
+      if (!textarea) return;
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      try {
+        document.execCommand('copy');
+        showToast("備份碼已複製！可在另一台 iPad 貼上");
+      } catch (e) {
+        showToast("請手動選取並複製框內代碼");
+      }
+    };
+
+    window.importSyncCode = function() {
+      const textarea = document.getElementById('sync-import-text');
+      const val = (textarea?.value || '').trim();
+      if (!val) {
+        showToast("請先貼上備份碼！");
+        return;
+      }
+
+      try {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(decodeURIComponent(atob(val)));
+        } catch (e) {
+          parsed = JSON.parse(val);
+        }
+
+        if (parsed && (parsed.sisterTasks || parsed.youngerTasks)) {
+          if (Array.isArray(parsed.sisterTasks)) window.sisterTasks = parsed.sisterTasks;
+          if (Array.isArray(parsed.youngerTasks)) window.youngerTasks = parsed.youngerTasks;
+          if (Array.isArray(parsed.savedRecords)) window.savedRecords = parsed.savedRecords;
+
+          saveToStorage();
+          window.renderTasks();
+          window.updateChallengeProgress();
+          if (window.currentView === 'records') window.renderRecords();
+          closeSyncModal();
+          showToast("🎉 資料已成功匯入！所有進度同步完成");
+        } else {
+          showToast("備份碼格式不符，請重新確認");
+        }
+      } catch (err) {
+        showToast("解析失敗，請確認代碼是否完整複製");
+      }
+    };
+
+    function updateClock() {
+      const now = new Date();
+      const target = new Date();
+      target.setHours(20, 30, 0, 0);
+
+      const diff = target - now;
+      const statusEl = document.getElementById('countdown-status');
+      if (!statusEl) return;
+
+      if (diff > 0) {
+        const mins = Math.floor(diff / 60000);
+        const remH = Math.floor(mins / 60);
+        const remM = mins % 60;
+        statusEl.innerHTML = `(倒數 <span class="text-rose-600 font-black">${remH > 0 ? remH + '時' : ''}${remM}分</span>)`;
+      } else {
+        statusEl.innerHTML = `<span class="text-slate-500 font-bold">(已過 20:30，準備甜甜入睡囉)</span>`;
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast-message');
+      const text = document.getElementById('toast-text');
+      if (!toast || !text) return;
+      text.textContent = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2400);
+    }
+
+    window.toggleSound = function() {
+      AudioEngine.enabled = !AudioEngine.enabled;
+      const icon = document.getElementById('sound-icon');
+      if (!icon) return;
+      if (AudioEngine.enabled) {
+        icon.className = 'fa-solid fa-volume-high text-emerald-600';
+        showToast("音效已開啟");
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark text-slate-400';
+        showToast("音效已靜音");
+      }
+    };
+
+    window.toggleFullScreen = function() {
+      const docEl = document.documentElement;
+      const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+      // 檢查是否處於已加到主畫面的獨立獨立 App 模式
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+      if (isStandalone) {
+        showToast("目前已是獨立全螢幕 App 模式！");
+        return;
+      }
+
+      if (!isFullscreen) {
+        let requestMethod = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+        if (requestMethod) {
+          requestMethod.call(docEl).catch(err => {
+            // iOS Safari 通常不允許純網頁 element requestFullscreen，彈出加入主畫面指引
+            openFullscreenGuide();
+          });
+        } else {
+          openFullscreenGuide();
+        }
+      } else {
+        let exitMethod = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+        if (exitMethod) {
+          exitMethod.call(document);
+        }
+      }
+    };
+
+    function updateFullscreenIcons() {
+      const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      const icon = document.getElementById('fullscreen-icon');
+      const text = document.getElementById('fullscreen-btn-text');
+      if (!icon) return;
+      if (isFs) {
+        icon.className = 'fa-solid fa-compress';
+        if (text) text.textContent = '結束全螢幕';
+      } else {
+        icon.className = 'fa-solid fa-expand';
+        if (text) text.textContent = '全螢幕';
+      }
+    }
+
+    document.addEventListener('fullscreenchange', updateFullscreenIcons);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenIcons);
+
+    window.openFullscreenGuide = function() {
+      const modal = document.getElementById('fullscreen-guide-modal');
+      if (modal) modal.classList.remove('hidden');
+    };
+
+    window.closeFullscreenGuide = function() {
+      const modal = document.getElementById('fullscreen-guide-modal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    window.onload = function() {
+      try {
+        loadFromStorage();
+        window.renderTasks();
+        updateClock();
+        setInterval(updateClock, 15000);
+        window.updateChallengeProgress();
+      } catch (err) {
+        console.error("Initialization check:", err);
+      }
+    };
+  </script>
+</body>
+</html>
